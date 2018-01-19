@@ -58,7 +58,7 @@ class Rates:
     def update(self):
         self.data = requests.get(self.apiUrl).json()[0]
         self.usd = Decimal(self.data['price_usd'])
-    
+
     def ethToUsd(self, eth):
         """convert ETH value to USD"""
         return self.usd * eth
@@ -93,10 +93,10 @@ class Account:
 
         with open(filename) as infile:
             acct_enc = json.load(infile)
-    
+
         acct_un = self.web3.eth.account.decrypt(acct_enc, password)
         acct = self.web3.eth.account.privateKeyToAccount(acct_un)
-    
+
         self.account = acct
         cprint(levels.low, "Account loaded")
         return self
@@ -106,7 +106,7 @@ class Account:
 
         if os.path.isfile(filename):
             raise Exception("A file already exist here")
-    
+
         acct_enc = self.web3.eth.account.encrypt(self.account.privateKey, password)
 
         with open(filename, 'w') as outfile:
@@ -120,7 +120,7 @@ class Account:
 
         if self.account:
             raise Exception("Account already set")
-    
+
         self.account = self.web3.eth.account.create(os.urandom(20))
         cprint(levels.low, "Account randomnly generated")
         return self
@@ -164,6 +164,20 @@ class Account:
             cprint(levels.success, "Transaction sent ({})".format(self.web3.toHex(tx_hash)))
             return self.web3.toHex(tx_hash)
 
+    def sendTo(self, to, amount, chainId):
+        """Send an amount of ether (in wei) to an address"""
+        transaction = {
+            'nonce': self.web3.eth.getTransactionCount(self.account.address),
+            'from': self.account.address,
+            'gas': 21000,
+            'gasPrice': self.web3.eth.gasPrice,
+            'chainId': chainId,
+            'value': amount,
+            'data': '',
+            'to':to
+        }
+        return self.launchTransaction(transaction)
+
 
 class SmartContractCaller:
     """Allow calling function on a published smart contract"""
@@ -187,7 +201,7 @@ class SmartContractCaller:
         with open(tx_filename) as infile:
             self.tx_hash = json.load(infile)
             cprint(levels.low, "tx_filename loaded ({0})".format(self.tx_hash))
-            
+
         with open(bin_filename) as infile:
             self.compiledSol = json.load(infile)
             cprint(levels.low, "bin_filename loaded")
@@ -224,7 +238,7 @@ class SmartContractCaller:
             gas = self.web3.eth.estimateGas(transaction)
             cprint(levels.info, "No gas specified. Based on transaction estimation is {0}, gas set to {1}".format(gas, gas * 2))
             gas += gas
-        
+
         transaction["gas"] = gas
         transaction["chainId"] = chainId
 
@@ -238,7 +252,7 @@ class SmartContractDeployer:
     sourceSol = None
     compiledSol = None
     tx_hash = None
-    
+
     def __init__(self, web3):
         self.web3 = web3
 
@@ -257,7 +271,7 @@ class SmartContractDeployer:
 
         self.compiledSol = compile_source(self.sourceSol)
         cprint(levels.low, "Solidity code compiled")
-        
+
     def saveCompiledSol(self, filename):
         """Save the compiled source code"""
         with open(filename, 'w') as outfile:
@@ -266,7 +280,7 @@ class SmartContractDeployer:
         cprint(levels.low, "Compiled code saved")
 
     def saveTx(self, tx_hash, filename):
-        """When a smart contract is published, a transaction hash is generated, 
+        """When a smart contract is published, a transaction hash is generated,
            it must be saved using this method in order to re-ling with the smart contract later
         """
         self.tx_hash = tx_hash
@@ -277,10 +291,10 @@ class SmartContractDeployer:
 
     # TODO: function must be rename, content cleaned
     def deploy(self, address, args, contractName, chainId, gas=None, gasPrice=None,gasMultiplicator=4):
-        """Return the Smart Contract publication Transaction""" 
+        """Return the Smart Contract publication Transaction"""
         contract = self.web3.eth.contract(abi=self.compiledSol[contractName]['abi'], bytecode=self.compiledSol[contractName]['bin'])
-        data = contract._encode_constructor_data(args)	
-        
+        data = contract._encode_constructor_data(args)
+
         transaction = {
             'nonce': self.web3.eth.getTransactionCount(address),
             'from': address,
@@ -301,7 +315,7 @@ class SmartContractDeployer:
             gas = self.web3.eth.estimateGas(transaction)
             cprint(levels.info, "No gas specified. Based on transaction estimation is {0}, gas set to {1}".format(gas, gas * gasMultiplicator))
             gas = gas * gasMultiplicator
-        
+
         transaction["gas"] = gas
         transaction["to"] = ''
         transaction["chainId"] = chainId
@@ -346,16 +360,16 @@ def printBlock(web3, block_hash, account=None):
     block = web3.eth.getBlock(block_hash)
     symb0 = "─" if len(block["transactions"]) == 0 else "┬"
     cprint(levels.success, "├─{0} Block {1}, {2} Transaction(s), Hash {3}".format(symb0, block["number"], len(block["transactions"]), web3.toHex(block["hash"])))
-    
+
     if block["transactions"]:
         for tx_hash in block["transactions"]:
 
             symb1 = "└─" if tx_hash == block["transactions"][-1] else "├─"
             symb2 = " " if tx_hash == block["transactions"][-1] else "│"
-            
+
             transaction = web3.eth.getTransaction(tx_hash)
             lcolor = levels.warning if transaction["from"] == account.account.address or transaction["to"] == account.account.address else levels.low
-    
+
             cprint(lcolor, "│ {0}┬─ Transaction from {1} to {2}".format(symb1,transaction["from"],transaction["to"]))			
             cprint(lcolor, "│ {0} └─  Value {1}, Gas {2}, GasPrice {3}".format(symb2, transaction["value"], transaction["gas"], transaction["gasPrice"],))		
 
