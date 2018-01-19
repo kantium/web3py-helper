@@ -1,0 +1,4 @@
+{
+    "endpoint" : "https://kovan.infura.io/token",
+    "chainId" : 42,
+}
