@@ -64,6 +64,7 @@ Some pretty printing functions (for block and transaction) can be used on filter
 - [ ] Renaming methods
 - [ ] Refactoring 
 - [ ] Add checks
+- [ ] Import ChainId from web3, not from config
 
 ## Issues
 
